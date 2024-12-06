@@ -2,13 +2,9 @@
 
 using namespace std;
 
-struct file{
-    int start;
-    int length;
-};
-
 int v[1000];
-file files[256];
+int start[256];
+int length[256];
 
 void print()
 {
@@ -18,7 +14,7 @@ void print()
         {
             if(files[v[i]].start == i)
             {
-                printf("%d: (%d, %d)\n", v[i], files[v[i]].start, files[v[i]].start + files[v[i]].length - 1);
+                printf("%d: (%d, %d)\n", v[i], start[v[i]], start[v[i]] + length[v[i]] - 1);
             }
         }
     }
@@ -34,15 +30,15 @@ void oppAdd()
         int descriptor, size;
         scanf("%d %d", &descriptor, &size);
 
-        int length = 0;
-        length = size / 8 + (size % 8 != 0);
+        int len = 0;
+        len = size / 8 + (size % 8 != 0);
 
         for(int j = 0; j < 1000; j++)
         {
             bool hasSpace = true;
             if(v[j] == 0)
             {
-                for (int k = j; k < j + length; k++)
+                for (int k = j; k < j + len; k++)
                 {
                     if(v[k] != 0)
                     {
@@ -52,12 +48,12 @@ void oppAdd()
                 }
                 if(hasSpace)
                 {
-                    for (int k = j; k < j + length; k++)
+                    for (int k = j; k < j + len; k++)
                     {
                         v[k] = descriptor;
                     }
-                    files[descriptor].start = j;
-                    files[descriptor].length = length;
+                    start[descriptor] = j;
+                    length[descriptor] = len;
                     break;
                 }
             }
@@ -66,7 +62,7 @@ void oppAdd()
 
         }
 
-        printf("%d: (%d, %d)\n", descriptor, files[descriptor].start, files[descriptor].start + files[descriptor].length - 1);
+        printf("%d: (%d, %d)\n", descriptor, start[descriptor], start[descriptor] + length[descriptor] - 1);
     }
 }
 
@@ -75,7 +71,7 @@ void oppGet()
     int descriptor;
     scanf("%d", &descriptor);
 
-    printf("%d: (%d, %d)\n", descriptor, files[descriptor].start, files[descriptor].start + files[descriptor].length - 1);
+    printf("%d: (%d, %d)\n", descriptor, start[descriptor], start[descriptor] + length[descriptor] - 1);
 }
 
 void oppDelete()
@@ -83,13 +79,13 @@ void oppDelete()
     int descriptor;
     scanf("%d", &descriptor);
 
-    for(int i = files[descriptor].start; i < files[descriptor].start + files[descriptor].length; i++)
+    for(int i = start[descriptor]; i < start[descriptor] + length[descriptor]; i++)
     {
         v[i] = 0;
     }
 
-    files[descriptor].start = 0;
-    files[descriptor].length = 0;
+    start[descriptor] = 0;
+    length[descriptor] = 0;
 
     print();
 }
@@ -114,9 +110,9 @@ void oppDefragmentation()
     {
         if (v[i] != 0)
         {
-            if (i < files[v[i]].start)
+            if (i < start[v[i]])
             {
-                files[v[i]].start = i;
+                start[v[i]] = i;
             }
         }
     }
