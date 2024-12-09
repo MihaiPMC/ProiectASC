@@ -2,17 +2,19 @@
 
 using namespace std;
 
-int v[1000];
+const int NMAX = 1000;
+
+int v[NMAX];
 int start[256];
 int length[256];
 
 void print()
 {
-    for(int i = 0; i < 1000; i++)
+    for(int i = 0; i < NMAX; i++)
     {
         if(v[i] != 0)
         {
-            if(files[v[i]].start == i)
+            if(start[v[i]] == i)
             {
                 printf("%d: (%d, %d)\n", v[i], start[v[i]], start[v[i]] + length[v[i]] - 1);
             }
@@ -33,11 +35,11 @@ void oppAdd()
         int len = 0;
         len = size / 8 + (size % 8 != 0);
 
-        for(int j = 0; j < 1000; j++)
+        for(int j = 0; j < NMAX; j++)//NMAX-len
         {
-            bool hasSpace = true;
             if(v[j] == 0)
             {
+                bool hasSpace = true;
                 for (int k = j; k < j + len; k++)
                 {
                     if(v[k] != 0)
@@ -57,9 +59,6 @@ void oppAdd()
                     break;
                 }
             }
-
-
-
         }
 
         printf("%d: (%d, %d)\n", descriptor, start[descriptor], start[descriptor] + length[descriptor] - 1);
@@ -71,7 +70,7 @@ void oppGet()
     int descriptor;
     scanf("%d", &descriptor);
 
-    printf("%d: (%d, %d)\n", descriptor, start[descriptor], start[descriptor] + length[descriptor] - 1);
+    printf("(%d, %d)\n", start[descriptor], start[descriptor] + length[descriptor] - 1);
 }
 
 void oppDelete()
@@ -94,7 +93,7 @@ void oppDefragmentation()
 {
     int cnt = 0;
 
-    for (int i = 0; i < 1000; i++)
+    for (int i = 0; i < NMAX; i++)
     {
         if(v[i] != 0)
         {
@@ -106,7 +105,7 @@ void oppDefragmentation()
         }
     }
 
-    for (int i = 0; i < 1000; i++)
+    for (int i = 0; i < NMAX; i++)
     {
         if (v[i] != 0)
         {
