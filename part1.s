@@ -18,6 +18,8 @@ j: .long 0
 k: .long 0
 len: .long 0
 hasSpace: .long 0
+cnt: .long 0
+aux: .long 0
 
 .text
 print:
@@ -38,7 +40,7 @@ print:
         movl (%edi, %ecx, 4), %edx
 
         cmp $0, %edx
-        je continuePrintFiles
+        jne continuePrintFiles
         
         jmp notPrintFiles
 
@@ -63,6 +65,7 @@ print:
             pushl %edx
             pushl $outputString
             call printf
+            popl %ebx
             popl %ebx
             popl %ebx
             popl %ebx
@@ -350,6 +353,86 @@ oppDelete:
 oppDefragmentation:
     pushl %ebp
     movl %esp, %ebp
+
+    ;#for (i = 0; i < nmax; i++)
+    movl $0, i
+    forDefrag:
+        movl nmax, %eax
+        cmp %eax, i
+        jge forDefrag_end
+
+        ;#if (v[i] != 0)
+        lea v, %edi
+        movl i, %ecx
+        movl (%edi, %ecx, 4), %edx
+        cmp $0, %edx
+
+        jne continueDefrag
+
+        jmp notContinueDefrag
+
+        continueDefrag:
+            ;#swap(v[i], v[cnt]);
+            lea v, %edi
+            movl i, %ecx
+            movl (%edi, %ecx, 4), %eax
+
+            lea v, %edi
+            movl cnt, %edx
+            movl (%edi, %edx, 4), %ebx
+
+            movl %ebx, (%edi, %ecx, 4)
+            movl %eax, (%edi, %edx, 4)
+
+
+            ;#cnt++;
+            add $1, cnt
+        notContinueDefrag:
+        add $1, i
+        jmp forDefrag
+    forDefrag_end:
+
+
+    ;#for (i = 0; i < nmax; i++)
+    movl $0, i
+    forDefrag2:
+        movl nmax, %eax
+        cmp %eax, i
+        jge forDefrag2_end
+
+        ;#if (v[i] != 0)
+        lea v, %edi
+        movl i, %ecx
+        movl (%edi, %ecx, 4), %edx
+        cmp $0, %edx
+
+        jne updateStart
+
+        jmp notUpdateStart
+
+        updateStart:
+            ;#if(i < start[v[i]])
+            lea start, %edi
+            movl %edx, %ecx
+            movl (%edi, %ecx, 4), %eax
+            cmp i, %eax
+            jge notUpdateStart
+
+            ;#start[v[i]] = i;
+            lea start, %edi
+            movl %edx, %ecx
+            movl i, %edx
+
+            movl %edx, (%edi, %ecx, 4)
+
+
+        notUpdateStart:
+        add $1, i
+        jmp forDefrag2
+    forDefrag2_end:
+
+    call print
+
 
     popl %ebp
     ret
