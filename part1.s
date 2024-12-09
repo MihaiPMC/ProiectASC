@@ -8,6 +8,9 @@ getOutputString: .asciz "(%d, %d)\n"
 auxOutput: .asciz "%d %d\n"
 singleInput: .asciz "%d"
 doubleInput: .asciz "%d %d"
+debugOutput: .asciz "%d "
+debugOutput2: .asciz "%d: %d %d\n"
+nextLine: .asciz "\n"
 descriptor: .long 0
 size: .long 0
 nrop: .long 0
@@ -22,6 +25,84 @@ cnt: .long 0
 aux: .long 0
 
 .text
+debugPrint:
+    pushl %ebp
+    movl %esp, %ebp
+
+    ;#for (i = 0; i < nmax; i++)
+    movl $0, i
+    forDebug:
+        movl nmax, %eax
+        cmp %eax, i
+        jge forDebug_end
+
+        lea v, %edi
+        movl i, %ecx
+        movl (%edi, %ecx, 4), %edx
+
+        pushl %edx
+        pushl $debugOutput
+        call printf
+        popl %ebx
+        popl %ebx
+
+        add $1, i
+        jmp forDebug
+    forDebug_end:
+
+    pushl $nextLine
+    call printf
+    popl %ebx
+
+    pushl $0
+    call fflush
+    popl %ebx
+
+    popl %ebp
+    ret
+debugStart:
+    pushl %ebp
+    movl %esp, %ebp
+
+    ;#for (i = 0; i < nmax; i++)
+    movl $0, i
+    startDebug:
+        movl $256, %eax
+        cmp %eax, i
+        jge endDebug
+
+        lea start, %edi
+        movl i, %ecx
+        movl (%edi, %ecx, 4), %edx
+
+        lea length, %edi
+        movl i, %ecx
+        movl (%edi, %ecx, 4), %eax
+
+        pushl %eax
+        pushl %edx
+        pushl i
+        pushl $debugOutput2
+        call printf
+        popl %ebx
+        popl %ebx
+        popl %ebx
+        popl %ebx
+
+        add $1, i
+        jmp startDebug
+    endDebug:
+
+    pushl $nextLine
+    call printf
+    popl %ebx
+
+    pushl $0
+    call fflush
+    popl %ebx
+
+    popl %ebp
+    ret
 print:
     pushl %ebp
     movl %esp, %ebp
@@ -123,7 +204,7 @@ oppAdd:
 
         cont:
 
-        ;#for (j = 0; j < nmax; j++)
+        ;#for (j = 0; j < nmax - len; j++)
         movl $0, j
         putFiles:
             movl nmax, %eax
@@ -345,6 +426,8 @@ oppDelete:
     movl descriptor, %ecx
     movl $0, %edx
 
+    movl %edx, (%edi, %ecx, 4)
+
     call print
 
     popl %ebp
@@ -366,7 +449,6 @@ oppDefragmentation:
         movl i, %ecx
         movl (%edi, %ecx, 4), %edx
         cmp $0, %edx
-
         jne continueDefrag
 
         jmp notContinueDefrag
@@ -416,7 +498,7 @@ oppDefragmentation:
             movl %edx, %ecx
             movl (%edi, %ecx, 4), %eax
             cmp i, %eax
-            jge notUpdateStart
+            jle notUpdateStart
 
             ;#start[v[i]] = i;
             lea start, %edi
@@ -432,7 +514,6 @@ oppDefragmentation:
     forDefrag2_end:
 
     call print
-
 
     popl %ebp
     ret
