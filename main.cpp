@@ -61,7 +61,14 @@ void oppAdd()
             }
         }
 
-        printf("%d: (%d, %d)\n", descriptor, start[descriptor], start[descriptor] + length[descriptor] - 1);
+        if(length[descriptor] == 0)
+        {
+            printf("%d:(0, 0)", descriptor);
+        }
+        else
+        {
+            printf("%d: (%d, %d)\n", descriptor, start[descriptor], start[descriptor] + length[descriptor] - 1);
+        }
     }
 }
 

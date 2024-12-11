@@ -1,15 +1,22 @@
 .data
-v: .space 4000
+v: .space 4096
 start: .space 1024
 length: .space 1024
-nmax: .long 1000
-outputString: .asciz "%d : (%d, %d)\n"
+nmax: .long 1024
+outputString: .asciz "%d: (%d, %d)\n"
 getOutputString: .asciz "(%d, %d)\n"
 auxOutput: .asciz "%d %d\n"
 singleInput: .asciz "%d"
 doubleInput: .asciz "%d %d"
 debugOutput: .asciz "%d "
 debugOutput2: .asciz "%d: %d %d\n"
+faraLocPrint: .asciz "(0, 0)\n"
+addfaraLocPrint: .asciz "%d: (0, 0)\n"
+debugGet: .asciz "GET\n"
+debugAdd: .asciz "ADD\n"
+debugDelete: .asciz "DELETE\n"
+debugDefrag: .asciz "DEFRAG\n"
+debugPr: .asciz "PRINT\n"
 nextLine: .asciz "\n"
 descriptor: .long 0
 size: .long 0
@@ -107,6 +114,7 @@ print:
     pushl %ebp
     movl %esp, %ebp
     
+
     ;#for (i = 0; i < nmax; i++)
     movl $0, i
 
@@ -204,10 +212,12 @@ oppAdd:
 
         cont:
 
-        ;#for (j = 0; j < nmax - len; j++)
+        ;#for (j = 0; j < nmax - len + 1; j++)
         movl $0, j
         putFiles:
             movl nmax, %eax
+            sub len, %eax
+            add $1, %eax
             cmp %eax, j
             jge putFiles_end
 
@@ -303,6 +313,25 @@ oppAdd:
             jmp putFiles
         putFiles_end:
 
+        ;#if(length[descriptor] == 0)
+        lea length, %edi
+        movl descriptor, %ecx
+        movl (%edi, %ecx, 4), %eax
+        cmp $0, %eax
+        jne areLoc
+
+        nuAreLoc:
+        ;#printf("%d:(0, 0)", descriptor);
+        pushl descriptor
+        pushl $addfaraLocPrint
+        call printf
+        popl %ebx
+        popl %ebx
+
+        jmp terminPrint
+        
+
+        areLoc:
         ;#printf("%d: (%d, %d)\n", descriptor, start[descriptor], start[descriptor] + length[descriptor] - 1);
 
         lea start, %edi
@@ -325,6 +354,8 @@ oppAdd:
         popl %ebx
         popl %ebx
         popl %ebx
+
+        terminPrint:
         
 
         pushl $0
@@ -350,6 +381,22 @@ oppGet:
     popl %ebx
     popl %ebx
 
+    ;#if(length[descriptor] == 0)
+    lea length, %edi
+    movl descriptor, %ecx
+    movl (%edi, %ecx, 4), %eax
+    cmp $0, %eax
+    je nuExista
+
+    jmp exista
+
+    nuExista:
+    pushl $faraLocPrint
+    call printf
+    popl %ebx
+
+    jmp terminaGet
+    exista:
     ;#printf("(%d, %d)\n", start[descriptor], start[descriptor] + length[descriptor] - 1);
     lea start, %edi
     movl descriptor, %ecx
@@ -369,9 +416,13 @@ oppGet:
     popl %ebx  
     popl %ebx
 
+    terminaGet:
+
     pushl $0
     call fflush
     popl %ebx
+
+    
 
     popl %ebp
     ret
@@ -380,6 +431,7 @@ oppDelete:
     pushl %ebp
     movl %esp, %ebp
 
+    
     ;#scanf("%d", &descriptor);
     pushl $descriptor
     pushl $singleInput
@@ -435,7 +487,9 @@ oppDelete:
 
 oppDefragmentation:
     pushl %ebp
-    movl %esp, %ebp
+    movl %esp, %ebp 
+
+    movl $0, cnt
 
     ;#for (i = 0; i < nmax; i++)
     movl $0, i
@@ -473,6 +527,7 @@ oppDefragmentation:
         add $1, i
         jmp forDefrag
     forDefrag_end:
+
 
 
     ;#for (i = 0; i < nmax; i++)
