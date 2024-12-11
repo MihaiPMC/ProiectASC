@@ -2,7 +2,7 @@
 
 using namespace std;
 
-const int NMAX = 1000;
+const int NMAX = 1024;
 
 int v[NMAX];
 int start[256];
@@ -35,7 +35,7 @@ void oppAdd()
         int len = 0;
         len = size / 8 + (size % 8 != 0);
 
-        for(int j = 0; j < NMAX; j++)//NMAX-len
+        for(int j = 0; j < NMAX - len + 1; j++)//NMAX-len
         {
             if(v[j] == 0)
             {
