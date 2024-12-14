@@ -207,11 +207,7 @@ int main()
     inputFile = fopen("input.txt", "r");
     outputFile = fopen("output.txt", "w");
 
-    if (inputFile == NULL || outputFile == NULL)
-    {
-        perror("Error opening file");
-        return 1;
-    }
+    
 
     fscanf(inputFile, "%d", &nrop);
 
