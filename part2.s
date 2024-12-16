@@ -24,15 +24,23 @@ hasSpace: .long 0
 currentLine: .long 0
 currentCol: .long 0
 d: .long 0
+aux2: .long 0
 placed: .long 0
 startCol: .long 0
+idx: .long 0
+vsalvat: .long 0
 singleInput: .asciz "%d"
 doubleInput: .asciz "%d %d"
 addOutput: .asciz "%d: ((%d, %d), (%d, %d))\n"
 printOutput: .asciz "%d: ((%d, %d), (%d, %d))\n"
 getOutput: .asciz "((%d, %d), (%d, %d))\n"
 getOutputZero: .asciz "((0, 0), (0, 0))\n"
-debugPrint: .asciz "TEST"
+debugRandom: .asciz "%d %d %d\n"
+debugPrint: .asciz "TEST\n"
+debugAux: .asciz "col %d\n"
+debugPrintNextLine: .asciz "\n"
+ii: .long 0
+jj: .long 0
 
 .text
 flush:
@@ -42,6 +50,38 @@ flush:
     pushl $0
     call fflush
     popl %ebx
+
+    popl %ebp
+    ret
+
+debugPrintCurrent:
+    pushl %ebp
+    movl %esp, %ebp
+
+    ;#for(int i = 0; i < nrCurent; i++)
+    movl $0, i
+    forDebugPrint:
+        movl nrCurent, %eax
+        cmp %eax, i
+        jge forDebugPrint_end
+
+        ;#printf("%d ", ordineNumere[i]);
+        lea ordineNumere, %edi
+        movl i, %eax
+        movl (%edi, %eax, 4), %eax
+
+        pushl %eax
+        pushl $debugRandom
+        call printf
+        popl %ebx
+        popl %ebx
+
+        call flush
+
+        add $1, i
+        jmp forDebugPrint
+    forDebugPrint_end:
+
 
     popl %ebp
     ret
@@ -158,6 +198,11 @@ oppAdd:
         add $1, len
 
         cont:
+
+        ;#if(len >= 2)
+        cmp $2, len
+        jl forLine_end
+
 
         ;#for(int j = 0; j < nmax; j++)
         movl $0, j
@@ -278,42 +323,14 @@ oppAdd:
 
         forLine_end:
 
-        ;#printf("%d: ((%d, %d), (%d, %d))\n", descriptor, startLinie[descriptor], startColoana[descriptor], startLinie[descriptor], startColoana[descriptor] + length[descriptor] - 1);
         
-        lea startColoana, %edi
-        movl descriptor, %ecx
-        movl (%edi, %ecx, 4), %edx
 
-        lea length, %edi
-        movl descriptor, %ecx
-        movl (%edi, %ecx, 4), %eax
-        sub $1, %eax
-        add %edx, %eax
-
-        lea startLinie, %edi
-        movl descriptor, %ecx
-        movl (%edi, %ecx, 4), %ebx
-
-        pushl %eax;#startColoana[descriptor] + length[descriptor] - 1
-        pushl %ebx;#startLinie[descriptor]
-        pushl %edx;#startColoana[descriptor]
-        pushl %ebx;#startLinie[descriptor]
-        pushl descriptor
-        pushl $addOutput
-        call printf
-        popl %ebx
-        popl %ebx
-        popl %ebx
-        popl %ebx
-        popl %ebx
-        popl %ebx
-
-
-        call flush
 
         add $1, i
         jmp forReadFiles
     forReadFiles_end:
+
+    call print
    
 
     popl %ebp
@@ -443,263 +460,280 @@ oppDefragAdd:
     pushl %ebp
     movl %esp, %ebp
 
-    # currentLine = 0;
+    
+
+    ;#currentLine = 0;
     movl $0, currentLine
-    # currentCol = 0;
+
+    ;#currentCol = 0;
     movl $0, currentCol
 
-    # for(idx = 0; idx < nrCurent; idx++)
-    movl $0, i
-    forIdx_defragAdd:
+    ;#for(int idx = 0; idx < nrCurent; idx++)
+    movl $0, idx
+    forDefragAdd:
         movl nrCurent, %eax
-        cmp %eax, i
-        jge forIdx_defragAdd_end
+        cmp %eax, idx
+        jge forDefragAdd_end
 
-        # d = ordineNumere[idx];
+        ;#d = ordineNumere[idx];
         lea ordineNumere, %edi
-        movl i, %eax
+        movl idx, %eax
         movl (%edi, %eax, 4), %ebx
         movl %ebx, d
 
-        # len = length[d];
+        ;#len = length[d];
         lea length, %edi
         movl d, %eax
         movl (%edi, %eax, 4), %ebx
         movl %ebx, len
 
-        # placed = false -> 0
+        ;#placed = 0;
         movl $0, placed
 
-        # for(i = currentLine; i < nmax && !placed; i++)
-        # We'll reuse `j` as loop counters inside. Let's use different registers carefully.
+        ;#for(int i = currentLine; i < nmax && placed == 0; i++)
+        movl currentLine, %ebx
+        movl %ebx, i
+        forDefragAddLinie:
+            movl nmax, %eax
+            cmp %eax, i
+            jge forDefragAddLinie_end
+            
+            cmp $0, placed
+            jne forDefragAddLinie_end
 
-        # Load currentLine and currentCol
-        movl currentLine, %eax
-        movl %eax, aux  # aux will be 'i' for line loop
-        forLine_defragAdd:
-            movl aux, %eax
-            movl placed, %ebx
-            cmp $0, %ebx
-            jne forLine_defragAdd_end # if placed != 0 break
-
-            movl nmax, %ecx
-            cmp %ecx, %eax
-            jge forLine_defragAdd_end
-
-            # i = aux (line)
-            # startCol = (i == currentLine) ? currentCol : 0;
-            movl aux, %edx
-            movl currentLine, %ebx
-            cmp %ebx, %edx
-            jne notSameLine
-            movl currentCol, %eax   ;# Move from memory (currentCol) to register %eax
-            movl %eax, startCol     ;# Move from register %eax to memory (startCol)
-            jmp setStartColDone
-        notSameLine:
+            ;#startCol = 0;
             movl $0, startCol
-        setStartColDone:
 
-            # for(j = startCol; j <= nmax - len && !placed; j++)
-            movl startCol, %edx
-            movl %edx, j
-            forCol_defragAdd:
-                movl placed, %ebx
-                cmp $0, %ebx
-                jne forCol_defragAdd_end
+            
 
+            ;#if(i == currentLine)
+            movl currentLine, %eax
+            cmp %eax, i
+            jne forDefragAddLinieCont
+
+                ;#startCol = currentCol;
+                movl currentCol, %eax
+                movl %eax, startCol  
+
+            forDefragAddLinieCont:
+
+            
+            
+
+            ;#for(int j = startCol; j < nmax - len + 1 && placed == 0; j++)
+            movl startCol, %eax
+            movl %eax, j
+
+            forDefragAddColoana:
                 movl nmax, %eax
                 sub len, %eax
-                cmp j, %eax
-                jg forCol_defragAdd_end  # j > nmax - len means break
+                add $1, %eax
+                cmp %eax, j
+                jge forDefragAddColoana_end
 
-                # hasSpace = true (1)
+                cmp $0, placed
+                jne forDefragAddColoana_end
+
+                ;#hasSpace = 1;
                 movl $1, hasSpace
 
-                # Check space: for(k = j; k < j + len; k++)
+                ;#for(int k = j; k < j + len; k++)
                 movl j, %eax
                 movl %eax, k
-                checkSpace_defragAdd:
+                forDefragAddCheck:
                     movl j, %eax
                     add len, %eax
                     cmp %eax, k
-                    jle checkSpace_end_defragAdd
+                    jge forDefragAddCheck_end
 
-                    # if (v[i][k] != 0) { hasSpace = false; break; }
-                    # v[i][k] = v[line][col]
-                    # line = aux, col = k
+                    ;#if(v[i][k] != 0)
                     lea v, %edi
-                    movl aux, %eax
+                    movl i, %eax
                     imull nmax, %eax
                     add k, %eax
-                    movl (%edi, %eax, 4), %ecx
-                    cmp $0, %ecx
-                    je continueCheckSpace
+                    movl (%edi, %eax, 4), %eax
 
-                    # hasSpace = 0;
-                    movl $0, hasSpace
-                    # break from space check
-                    jmp checkSpace_end_defragAdd_break
+                    cmp $0, %eax
+                    je forDefragAddCheckCont
 
-                    continueCheckSpace:
-                        add $1, k
-                        jmp checkSpace_defragAdd
-                checkSpace_end_defragAdd:
-                checkSpace_end_defragAdd_break:
+                        ;#hasSpace = 0;
+                        movl $0, hasSpace
+                        ;#break;
+                        jmp forDefragAddCheck_end
 
-                # if(hasSpace)
-                movl hasSpace, %eax
-                cmp $1, %eax
-                jne noSpaceFound_defragAdd
-
-                # Place the block: for(k = j; k < j + len; k++)
-                movl j, %eax
-                movl %eax, k
-                placeBlock_defragAdd:
-                    movl j, %ecx
-                    add len, %ecx
-                    cmp %ecx, k
-                    jle placeBlock_end_defragAdd
-
-                    lea v, %edi
-                    movl aux, %edx  # line
-                    imull nmax, %edx
-                    add k, %edx
-                    movl d, %ebx
-                    movl %ebx, (%edi, %edx, 4)
-
+                    forDefragAddCheckCont:
                     add $1, k
-                    jmp placeBlock_defragAdd
-                placeBlock_end_defragAdd:
+                    jmp forDefragAddCheck
+                forDefragAddCheck_end:
 
-                # startLinie[d] = i (which is aux)
-                lea startLinie, %edi
-                movl d, %eax
-                movl aux, %ebx
-                movl %ebx, (%edi, %eax, 4)
 
-                # startColoana[d] = j
-                lea startColoana, %edi
-                movl d, %eax
-                movl j, %ebx
-                movl %ebx, (%edi, %eax, 4)
+                ;#if(hasSpace == 1)
+                cmp $1, hasSpace
+                jne forDefragAddColoanaCont 
 
-                # currentLine = i;
-                movl aux, %eax
-                movl %eax, currentLine
+                    ;#for(int k = j; k < j + len; k++)
+                    movl j, %eax
+                    movl %eax, k
 
-                # currentCol = j + len;
-                movl j, %eax
-                add len, %eax
-                movl %eax, currentCol
+                    forDefragAddFiles:
+                        movl j, %eax
+                        add len, %eax
+                        cmp %eax, k
+                        jge forDefragAddFiles_end
 
-                # if(currentCol >= nmax) { currentLine++; currentCol = 0; }
-                movl currentCol, %eax
-                movl nmax, %ebx
-                cmp %ebx, %eax
-                jl noLineIncrease_defragAdd
+                        ;#v[i][k] = d
+                        lea v, %edi
+                        movl i, %eax
+                        imull nmax, %eax
+                        add k, %eax
+                        movl d, %ebx
+                        movl %ebx, (%edi, %eax, 4)
 
-                add $1, currentLine
-                movl $0, currentCol
+                        add $1, k
+                        jmp forDefragAddFiles
+                    forDefragAddFiles_end:
 
-                noLineIncrease_defragAdd:
 
-                # placed = true
-                movl $1, placed
+                    ;#startLinie[d] = i;
+                    lea startLinie, %edi
+                    movl d, %eax
+                    movl i, %ebx
+                    movl %ebx, (%edi, %eax, 4)
 
-                noSpaceFound_defragAdd:
+                    ;#startColoana[d] = j;
+                    lea startColoana, %edi
+                    movl d, %eax
+                    movl j, %ebx
+                    movl %ebx, (%edi, %eax, 4)
 
+                    ;#currentLine = i;
+                    movl i, %eax
+                    movl %eax, currentLine
+
+                    ;#currentCol = j + len;
+                    movl j, %eax
+                    add len, %eax
+                    movl %eax, currentCol
+
+                    
+
+                    ;#if(currentCol >= nmax)
+                    movl nmax, %eax
+                    cmp %eax, currentCol
+                    jle forDefragAddColoanaAux
+
+                        ;#currentLine++;
+                        add $1, currentLine
+                        ;#currentCol = 0;
+                        movl $0, currentCol
+                    
+                    forDefragAddColoanaAux:
+
+                    
+
+                    ;#placed = 1;
+                    movl $1, placed
+
+
+                forDefragAddColoanaCont:
                 add $1, j
-                jmp forCol_defragAdd
-            forCol_defragAdd_end:
+                jmp forDefragAddColoana
+            forDefragAddColoana_end:
 
-            add $1, aux
-            jmp forLine_defragAdd
-        forLine_defragAdd_end:
 
-        add $1, i
-        jmp forIdx_defragAdd
-    forIdx_defragAdd_end:
+            add $1, i
+            jmp forDefragAddLinie
+        forDefragAddLinie_end:
+
+        add $1, idx
+        jmp forDefragAdd
+    forDefragAdd_end:
 
     popl %ebp
     ret
 
 oppDefrag:
-    pushl %ebp
+     pushl %ebp
     movl %esp, %ebp
-
-    # for (i = 0; i < nmax; i++)
-    movl $0, i
-    forI_opDefrag:
+ 
+    ;#for(int i = 0; i < nmax; i++)
+    movl $0, ii
+    forDefragLinie:
         movl nmax, %eax
-        cmp %eax, i
-        jge forI_opDefrag_end
-
-        # for(j = 0; j < nmax; j++)
-        movl $0, j
-        forJ_opDefrag:
+        cmp %eax, ii
+        jge forDefragLinie_end
+ 
+        ;#for(int j = 0; j < nmax; j++)
+        movl $0, jj
+        forDefragColoana:
             movl nmax, %eax
-            cmp %eax, j
-            jge forJ_opDefrag_end
-
-            # if (v[i][j] != 0)
+            cmp %eax, jj
+            jge forDefragColoana_end
+ 
+            ;#if(v[i][j] != 0)
             lea v, %edi
-            movl i, %eax
+            movl ii, %eax
             imull nmax, %eax
-            add j, %eax
-            movl (%edi, %eax, 4), %ebx
-            cmp $0, %ebx
-            je opDefrag_continueJ
+            add jj, %eax
+            movl (%edi, %eax, 4), %eax
+            movl %eax, vsalvat
+ 
+            cmp $0, %eax
+            je forDefragColoanaCont
+ 
+                ;#aux2 = v[i][j];
+                movl vsalvat, %eax
+                movl %eax, aux2
+                ;#ordineNumere[nrCurent] = aux2;
+                lea ordineNumere, %edi
+                movl nrCurent, %eax
+                movl aux2, %ebx
+                movl %ebx, (%edi, %eax, 4)  
+ 
+                ;#lungimeCurent = length[aux2];
+                lea length, %edi
+                movl aux2, %eax
+                movl (%edi, %eax, 4), %ebx
+                movl %ebx, lungimeCurenta
+ 
+                ;#descriptor = aux2;
+                movl aux2, %eax
+                movl %eax, descriptor
+ 
+ 
+ 
+                ;#oppDelete();
+                call oppDelete
+ 
+                ;#length[aux2] = lungimeCurent;
+                lea length, %edi
+                movl aux2, %eax
+                movl lungimeCurenta, %ebx
+                movl %ebx, (%edi, %eax, 4)
+ 
+                ;#nrCurent++;
+                add $1, nrCurent
+ 
+            forDefragColoanaCont:
+ 
+            add $1, jj
+            jmp forDefragColoana
+        forDefragColoana_end:
+ 
+        add $1, ii
+        jmp forDefragLinie
+    forDefragLinie_end:  
 
-            # aux = v[i][j]
-            movl %ebx, aux
-
-            # ordineNumere[nrCurent] = aux
-            lea ordineNumere, %edi
-            movl nrCurent, %eax
-            movl aux, %ebx
-            movl %ebx, (%edi, %eax, 4)
-
-            # lungimeCurent = length[aux]
-            lea length, %edi
-            movl aux, %eax
-            movl (%edi, %eax, 4), %ebx
-            movl %ebx, lungimeCurenta
-
-            # descriptor = aux
-            movl aux, %eax          ;# Load aux into %eax
-            movl %eax, descriptor   ;# Store %eax into descriptor
-
-
-            # call opDelete() equivalent -> oppDelete
-            call oppDelete
-
-            # length[aux] = lungimeCurenta
-            lea length, %edi
-            movl aux, %eax
-            movl lungimeCurenta, %ebx
-            movl %ebx, (%edi, %eax, 4)
-
-            # nrCurent++
-            add $1, nrCurent
-
-            opDefrag_continueJ:
-            add $1, j
-            jmp forJ_opDefrag
-        forJ_opDefrag_end:
-
-        add $1, i
-        jmp forI_opDefrag
-    forI_opDefrag_end:
-
-    # defragAdd() -> oppDefragAdd
+ 
+    ;#defragAdd();
     call oppDefragAdd
-
-    # nrCurent = 0;
+ 
+    ;#nrCurent = 0;
     movl $0, nrCurent
-
-    # print();
+ 
+    ;#print();
     call print
-
+ 
     popl %ebp
     ret
 
@@ -736,6 +770,7 @@ main:
             jne op2 
 
             call oppAdd
+
             jmp switch_end
 
         op2:;# else if(op == 2)
@@ -743,6 +778,7 @@ main:
             jne op3
 
             call oppGet
+
             jmp switch_end
 
 
@@ -762,12 +798,15 @@ main:
             
             call print
 
+
             jmp switch_end
 
 
         op4:;# else if(op == 4)
             cmp $4, op
             jne switch_end
+
+          
 
             call oppDefrag
             jmp switch_end

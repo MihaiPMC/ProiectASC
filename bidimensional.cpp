@@ -44,45 +44,52 @@ void opAdd()
 
         int len = size / 8 + (size % 8 != 0);
 
-        for (int j = 0; j < NMAX; j++) // linie
+        if(len >= 2)
         {
-            bool isSpaceOnLine = true;
-            for (int k = 0; k < NMAX - len + 1; k++) // coloana
-            {
-                bool hasSpace = true;
 
-                for (int l = k; l < k + len; l++)
+            for (int j = 0; j < NMAX; j++) // linie
+            {
+                bool isSpaceOnLine = true;
+                for (int k = 0; k < NMAX - len + 1; k++) // coloana
                 {
-                    if (v[j][l] != 0)
+                    bool hasSpace = true;
+
+                    for (int l = k; l < k + len; l++)
                     {
-                        hasSpace = false;
+                        if (v[j][l] != 0)
+                        {
+                            hasSpace = false;
+                            break;
+                        }
+                    }
+
+                    if (hasSpace)
+                    {
+                        for (int l = k; l < k + len; l++)
+                        {
+                            v[j][l] = descriptor;
+                        }
+
+                        startLinie[descriptor] = j;
+                        startColoana[descriptor] = k;
+                        length[descriptor] = len;
+
+                        isSpaceOnLine = false;
                         break;
                     }
                 }
-
-                if (hasSpace)
+                if (!isSpaceOnLine)
                 {
-                    for (int l = k; l < k + len; l++)
-                    {
-                        v[j][l] = descriptor;
-                    }
-
-                    startLinie[descriptor] = j;
-                    startColoana[descriptor] = k;
-                    length[descriptor] = len;
-
-                    isSpaceOnLine = false;
                     break;
                 }
             }
-            if (!isSpaceOnLine)
-            {
-                break;
-            }
+
+        
         }
 
-        fprintf(outputFile, "%d: ((%d, %d), (%d, %d))\n", descriptor, startLinie[descriptor], startColoana[descriptor], startLinie[descriptor], startColoana[descriptor] + length[descriptor] - 1);
     }
+
+    print();
 }
 
 void opGet()
@@ -123,7 +130,7 @@ void defragAdd()
         int len = length[d];
 
         bool placed = false;
-        for (int i = currentLine; i < NMAX && !placed; i++)
+        for (int i = currentLine; i < NMAX && placed == false; i++)
         {
             // If this is not the starting line, we start from column 0 again
             int startCol;
@@ -136,7 +143,7 @@ void defragAdd()
                 startCol = 0;
             }
 
-            for (int j = startCol; j <= NMAX - len && !placed; j++)
+            for (int j = startCol; j < NMAX - len + 1 && placed == false; j++)
             {
                 bool hasSpace = true;
                 for (int k = j; k < j + len; k++)
@@ -181,14 +188,14 @@ void opDefrag()
         {
             if (v[i][j] != 0)
             {
-                int aux = v[i][j];
-                ordineNumere[nrCurent] = v[i][j];
-                lungimeCurent = length[v[i][j]];
+                int aux2 = v[i][j];
+                ordineNumere[nrCurent] = aux2;
+                lungimeCurent = length[aux2];
 
-                descriptor = v[i][j];
+                descriptor = aux2;
                 opDelete();
 
-                length[aux] = lungimeCurent;
+                length[aux2] = lungimeCurent;
 
                 nrCurent++;
             }

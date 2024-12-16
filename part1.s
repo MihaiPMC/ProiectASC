@@ -209,8 +209,13 @@ oppAdd:
         cmp $0, %edx
         je cont
         add $1, len
-
+        
         cont:
+        ;#if(len >= 2)
+        cmp $2, len
+        jl putFiles_end
+
+
 
         ;#for (j = 0; j < nmax - len + 1; j++)
         movl $0, j
@@ -313,59 +318,14 @@ oppAdd:
             jmp putFiles
         putFiles_end:
 
-        ;#if(length[descriptor] == 0)
-        lea length, %edi
-        movl descriptor, %ecx
-        movl (%edi, %ecx, 4), %eax
-        cmp $0, %eax
-        jne areLoc
-
-        nuAreLoc:
-        ;#printf("%d:(0, 0)", descriptor);
-        pushl descriptor
-        pushl $addfaraLocPrint
-        call printf
-        popl %ebx
-        popl %ebx
-
-        jmp terminPrint
         
-
-        areLoc:
-        ;#printf("%d: (%d, %d)\n", descriptor, start[descriptor], start[descriptor] + length[descriptor] - 1);
-
-        lea start, %edi
-        movl descriptor, %ecx
-        movl (%edi, %ecx, 4), %edx
-
-
-        lea length, %edi
-        movl descriptor, %ecx
-        movl (%edi, %ecx, 4), %eax
-        sub $1, %eax
-        add %edx, %eax
-
-        pushl %eax
-        pushl %edx
-        pushl descriptor
-        pushl $outputString
-        call printf
-        popl %ebx
-        popl %ebx
-        popl %ebx
-        popl %ebx
-
-        terminPrint:
-        
-
-        pushl $0
-        call fflush
-        popl %ebx
 
         add $1, i
         jmp forReadFiles
 
     forReadFiles_end:
+
+    call print
 
     popl %ebp
     ret

@@ -35,41 +35,40 @@ void oppAdd()
         int len = 0;
         len = size / 8 + (size % 8 != 0);
 
-        for(int j = 0; j < NMAX - len + 1; j++)//NMAX-len
+        if (len >= 2)
         {
-            if(v[j] == 0)
+            for(int j = 0; j < NMAX - len + 1; j++)//NMAX-len
             {
-                bool hasSpace = true;
-                for (int k = j; k < j + len; k++)
+                if(v[j] == 0)
                 {
-                    if(v[k] != 0)
+                    bool hasSpace = true;
+                    for (int k = j; k < j + len; k++)
                     {
-                        hasSpace = false;
+                        if(v[k] != 0)
+                        {
+                            hasSpace = false;
+                            break;
+                        }
+                    }
+                    if(hasSpace)
+                    {
+                        for (int k = j; k < j + len; k++)
+                        {
+                            v[k] = descriptor;
+                        }
+                        start[descriptor] = j;
+                        length[descriptor] = len;
                         break;
                     }
                 }
-                if(hasSpace)
-                {
-                    for (int k = j; k < j + len; k++)
-                    {
-                        v[k] = descriptor;
-                    }
-                    start[descriptor] = j;
-                    length[descriptor] = len;
-                    break;
-                }
             }
+
         }
 
-        if(length[descriptor] == 0)
-        {
-            printf("%d:(0, 0)", descriptor);
-        }
-        else
-        {
-            printf("%d: (%d, %d)\n", descriptor, start[descriptor], start[descriptor] + length[descriptor] - 1);
-        }
+        
     }
+
+    print();
 }
 
 void oppGet()
