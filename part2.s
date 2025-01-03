@@ -323,14 +323,49 @@ oppAdd:
 
         forLine_end:
 
-        
+        ;#printf("%d: ((%d, %d), (%d, %d))\n", descriptor, startLinie[descriptor], startColoana[descriptor], startLinie[descriptor], startColoana[descriptor] + length[descriptor] - 1);
+
+        lea startColoana, %edi
+        movl descriptor, %ecx
+        movl (%edi, %ecx, 4), %edx
+        lea length, %edi
+        movl descriptor, %ecx
+        movl (%edi, %ecx, 4), %eax
+
+        cmp $0, %eax
+        je continuiFaraPrint
+
+        sub $1, %eax
+        add %edx, %eax
+        lea startLinie, %edi
+        movl descriptor, %ecx
+        movl (%edi, %ecx, 4), %ebx
 
 
+        pushl %eax;#startColoana[descriptor] + length[descriptor] - 1
+        pushl %ebx;#startLinie[descriptor]
+        pushl %edx;#startColoana[descriptor]
+        pushl %ebx;#startLinie[descriptor]
+        pushl descriptor
+        pushl $addOutput
+        call printf
+        popl %ebx
+        popl %ebx
+        popl %ebx
+        popl %ebx
+        popl %ebx
+        popl %ebx
+
+        continuiFaraPrint:
+
+
+        call flush
         add $1, i
         jmp forReadFiles
+
     forReadFiles_end:
 
-    call print
+    ;#call print
    
 
     popl %ebp
