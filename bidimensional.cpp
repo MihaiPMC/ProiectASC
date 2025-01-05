@@ -1,4 +1,10 @@
 #include <stdio.h>
+#include <dirent.h>     // opendir, readdir, closedir
+#include <sys/stat.h>   // fstat, struct stat
+#include <fcntl.h>      // open
+#include <unistd.h>     // close
+#include <stdio.h>      // sprintf, fscanf
+#include <string.h>     // strcmp
 
 const int NMAX = 1024;
 
@@ -11,6 +17,8 @@ int ordineNumere[256];
 int nrCurent = 0;
 int lungimeCurent = 0;
 int descriptor = 0;
+char folderPath[1024];
+char fullPath[1024];
 
 FILE *inputFile;
 FILE *outputFile;
@@ -209,6 +217,108 @@ void opDefrag()
     print();
 }
 
+void opConcrete()
+{
+    scanf("%s", folderPath);
+
+    DIR* dp = opendir(folderPath);
+    struct dirent *entry;
+
+    while ((entry = readdir(dp)) != NULL)
+    {
+        //Skip . and ..
+
+        if (entry->d_name[0] == '.' && entry->d_name[1] == '\0')
+            continue;
+
+        if (entry->d_name[0] == '.' && entry->d_name[1] == '.' && entry->d_name[2] == '\0')
+            continue;
+
+
+        int idx = 0;
+        while (folderPath[idx] != '\0')
+        {
+            fullPath[idx] = folderPath[idx];
+            idx++;
+        }
+
+        fullPath[idx] = '/';
+        idx++;///////////////////////////////////////
+
+        int idx2 = 0;
+        while (entry->d_name[idx2] != '\0')
+        {
+            fullPath[idx] = entry->d_name[idx2];
+            idx++;
+            idx2++;
+        }
+        fullPath[idx] = '\0';
+
+        int fds = open(fullPath, O_RDONLY);
+        int descriptor = (fds % 255) + 1;
+
+        printf("%d\n", descriptor);
+
+        struct stat fileStat;
+        fstat(fds, &fileStat);
+        int size = fileStat.st_size / 1024;
+
+        int len  = size / 8 + (size % 8 != 0);
+        printf("%d\n", len);
+        //close (fds);//----------------------------------------------------------------
+
+        if(len >= 2)
+        {
+
+            for (int j = 0; j < NMAX; j++) // linie
+            {
+                bool isSpaceOnLine = true;
+                for (int k = 0; k < NMAX - len + 1; k++) // coloana
+                {
+                    bool hasSpace = true;
+
+                    for (int l = k; l < k + len; l++)
+                    {
+                        if (v[j][l] != 0)
+                        {
+                            hasSpace = false;
+                            break;
+                        }
+                    }
+
+                    if (hasSpace)
+                    {
+                        for (int l = k; l < k + len; l++)
+                        {
+                            v[j][l] = descriptor;
+                        }
+
+                        startLinie[descriptor] = j;
+                        startColoana[descriptor] = k;
+                        length[descriptor] = len;
+
+                        printf("%d: ((%d, %d), (%d, %d))\n", descriptor, j, k, j, k + len - 1);
+
+                        isSpaceOnLine = false;
+                        break;
+                    }
+                }
+                if (!isSpaceOnLine)
+                {
+                    break;
+                }
+            }
+
+
+        }
+
+    }
+
+
+
+}
+
+
 int main()
 {
     inputFile = fopen("input.txt", "r");
@@ -245,6 +355,10 @@ int main()
         {
             //fprintf(outputFile, "opDefrag\n");
             opDefrag();
+        }
+        else if(op == 5)
+        {
+            opConcrete();
         }
     }
 

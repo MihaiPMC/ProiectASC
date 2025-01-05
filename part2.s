@@ -30,18 +30,26 @@ startCol: .long 0
 idx: .long 0
 vsalvat: .long 0
 singleInput: .asciz "%d"
+singleOutput: .asciz "%d\n"
 doubleInput: .asciz "%d %d"
 addOutput: .asciz "%d: ((%d, %d), (%d, %d))\n"
 printOutput: .asciz "%d: ((%d, %d), (%d, %d))\n"
 getOutput: .asciz "((%d, %d), (%d, %d))\n"
 getOutputZero: .asciz "((0, 0), (0, 0))\n"
 addOutputZero: .asciz "%d: ((0, 0), (0, 0))\n"
+concreteInput: .asciz "%s"
+concreteRandom: .asciz "%s\n"
+concreteSnprintf: .asciz "%s/%s\0"
 debugRandom: .asciz "%d %d %d\n"
 debugPrint: .asciz "TEST\n"
 debugAux: .asciz "col %d\n"
 debugPrintNextLine: .asciz "\n"
 ii: .long 0
 jj: .long 0
+fileSize: .long 0
+fileStat: .space 128
+folderPath: .space 10000
+fullPath: .space 10000
  
 .text
 flush:
@@ -703,7 +711,7 @@ oppDefragAdd:
     ret
  
 oppDefrag:
-     pushl %ebp
+    pushl %ebp
     movl %esp, %ebp
  
     ;#for(int i = 0; i < nmax; i++)
@@ -786,7 +794,295 @@ oppDefrag:
  
     popl %ebp
     ret
- 
+
+opConcrete:
+    pushl %ebp
+    movl %esp, %ebp
+
+    ;#scanf("%s", folderPath);
+    pushl $folderPath
+    pushl $concreteInput
+    call scanf
+    addl $8, %esp
+
+    pushl $folderPath
+    call opendir
+    add $4, %esp
+    movl %eax, %esi ;#dp -> ESI
+
+    loop_readdir:
+
+        pushl %esi
+        call readdir
+        add $4, %esp
+        testl %eax, %eax
+        je done_reading ;# if (entry == NULL) goto done_reading
+
+        movl %eax, %edi ;#entry -> EDI
+
+        leal 11(%edi), %ebx ;#entry -> d_name -> EBX
+
+        ;# check if the name start with .
+        movb 11(%edi), %al
+        cmpb $46, %al
+        je loop_readdir
+
+       ;# snprintf(fullPath, sizeof(fullPath), "%s/%s", folderPath, d_name)
+        pushl   %ebx            ;# d_name (file name)
+        pushl   $folderPath     ;# folder path
+        pushl   $concreteSnprintf ;# "%s/%s" format string
+        pushl   $10000          ;# sizeof(fullPath)
+        pushl   $fullPath       ;# fullPath buffer
+        call    snprintf
+        addl    $20, %esp
+
+        ;# Print full path--------------------------------------------------------
+        ;#pushl   $fullPath       ;# fullPath
+        ;#pushl   $concreteRandom ;# "%s\\n" format string
+        ;#call    printf
+        ;#addl    $8, %esp    
+
+        ;# fds = open(fullPath, O_RDONLY)
+        pushl   $0              ;# O_RDONLY
+        pushl   $fullPath       ;# fullPath
+        call    open
+        addl    $8, %esp
+
+        movl    %eax, %edi      ;# fd -> EDI
+
+
+        ;#descriptor = (fd % 255) + 1
+        movl    %edi, %eax
+        movl    $255, %ebx
+        divl    %ebx
+        addl    $1, %edx
+        movl    %edx, descriptor
+
+        ;#printf("%d\n", descriptor);-------------------
+        pushl   descriptor
+        pushl  $singleOutput
+        call    printf
+        addl    $8, %esp
+
+        ;# get the size of the file
+        movl   $19, %eax
+        movl   %edi, %ebx
+        movl   $0, %ecx
+        movl   $2, %edx
+        int    $0x80
+
+        xorl  %edx, %edx
+        movl $1024, %ecx
+        divl %ecx
+
+        movl    %eax, fileSize
+
+        ;# len = fileSize / 8 + (fileSize % 8 != 0);
+        
+        movl $0, %edx
+        movl fileSize, %eax
+        movl $8, %ecx
+        divl %ecx
+        movl %eax, len
+
+        cmp $0, %edx
+        je continuaConcrete
+        add $1, len
+
+        continuaConcrete:
+
+        ;#printf("%d\n", fileSize);-------------------
+        pushl   len
+        pushl  $singleOutput
+        call    printf
+        addl    $8, %esp
+
+        ;#add the file to the matrix------------------------
+        ;#if(len >= 2)
+        cmp $2, len
+        jl concreteForLine_end
+
+        ;#for(int j = 0; j < nmax; j++)
+        movl $0, j
+        concreteForLine:
+            movl nmax, %eax
+            cmp %eax, j
+            jge concreteForLine_end
+
+            ;#isSpaceOnLine = 1;
+            movl $1, isSpaceOnLine
+
+            ;#for(int k = 0; k < nmax - len + 1; k++)
+            movl $0, k
+            concreteForCol:
+                movl nmax, %eax
+                sub len, %eax
+                add $1, %eax
+                cmp %eax, k
+                jge concreteForCol_end
+
+                ;#hasSpace = 1;
+                movl $1, hasSpace
+
+                ;#for(int l = k; l < k + len; l++)
+                movl k, %ebx
+                movl %ebx, l
+                concreteCheckIfSpace:
+                    movl k, %eax
+                    add len, %eax
+                    cmp %eax, l
+                    jge concreteForCheckIfSpace_end
+
+                    ;#if(v[j][l] != 0)
+                    lea v, %edi
+                    movl j, %eax
+                    imull nmax, %eax
+                    add l, %eax
+                    movl (%edi, %eax, 4), %eax
+
+                    cmp $0, %eax
+                    je concreteCheckIfSpaceCont
+                    
+                    ;#hasSpace = 0;
+                    movl $0, hasSpace
+                    jmp concreteForCheckIfSpace_end
+
+                    concreteCheckIfSpaceCont:
+                        add $1, l
+                        jmp concreteCheckIfSpace
+                    
+                concreteForCheckIfSpace_end:
+
+                ;#if(hasSpace == 1)
+                cmp $1, hasSpace
+                jne concreteForColCont
+
+                ;#for(int l = k; l < k + len; l++)
+                movl k, %ebx
+                movl %ebx, l
+                ConcreteForAddFiles:
+                    movl k, %eax
+                    add len, %eax
+                    cmp %eax, l
+                    jge ConcreteForAddFiles_end
+
+                    ;#v[j][l] = descriptor;
+                    lea v, %edi
+                    movl j, %eax
+                    imull nmax, %eax
+                    add l, %eax
+                    movl descriptor, %ebx
+                    movl %ebx, (%edi, %eax, 4)
+
+                    add $1, l
+                    jmp ConcreteForAddFiles
+
+                ConcreteForAddFiles_end:
+
+                ;#startLinie[descriptor] = j;
+                lea startLinie, %edi
+                movl descriptor, %eax
+                movl j, %ebx
+                movl %ebx, (%edi, %eax, 4)
+
+                ;#startColoana[descriptor] = k;
+                lea startColoana, %edi
+                movl descriptor, %eax
+                movl k, %ebx
+                movl %ebx, (%edi, %eax, 4)
+
+                ;#length[descriptor] = len;
+                lea length, %edi
+                movl descriptor, %eax
+                movl len, %ebx
+                movl %ebx, (%edi, %eax, 4)
+
+                ;#isSpaceOnLine = 0;
+                movl $0, isSpaceOnLine
+
+                ;#break;
+                jmp concreteForCol_end
+
+                concreteForColCont:
+                    add $1, k
+                    jmp concreteForCol
+
+            concreteForCol_end:
+
+            ;#if(isSpaceOnLine == 0)
+            cmp $0, isSpaceOnLine
+            je concreteForLine_end
+
+            add $1, j
+            jmp concreteForLine
+
+        concreteForLine_end:
+
+        ;#printf("%d: ((%d, %d), (%d, %d))\n", descriptor, startLinie[descriptor], startColoana[descriptor], startLinie[descriptor], startColoana[descriptor] + length[descriptor] - 1);
+
+        lea startColoana, %edi
+        movl descriptor, %ecx
+        movl (%edi, %ecx, 4), %edx
+        lea length, %edi
+        movl descriptor, %ecx
+        movl (%edi, %ecx, 4), %eax
+
+        cmp $0, %eax
+        jne concreteAfisamNormal
+
+        concreteAfisam0:
+        pushl descriptor
+        pushl $addOutputZero
+        call printf
+        popl %ebx
+        popl %ebx
+
+        call flush
+        jmp concreteAddTerminAfisarea
+
+        concreteAfisamNormal:
+
+        sub $1, %eax
+        add %edx, %eax
+        lea startLinie, %edi
+        movl descriptor, %ecx
+        movl (%edi, %ecx, 4), %ebx
+
+        pushl %eax;#startColoana[descriptor] + length[descriptor] - 1
+        pushl %ebx;#startLinie[descriptor]
+        pushl %edx;#startColoana[descriptor]
+        pushl %ebx;#startLinie[descriptor]
+        pushl descriptor
+        pushl $addOutput
+        call printf
+        popl %ebx
+        popl %ebx
+        popl %ebx
+        popl %ebx
+        popl %ebx
+        popl %ebx
+
+        call flush
+
+        concreteAddTerminAfisarea:
+
+
+
+
+        jmp    loop_readdir
+
+
+    done_reading:
+
+    pushl %esi
+    call closedir
+    add $4, %esp
+
+    call flush
+    
+    popl %ebp
+    ret
+
 .global main
 main:
     ;#scanf("%d", &nrop);
@@ -854,11 +1150,24 @@ main:
  
         op4:;# else if(op == 4)
             cmp $4, op
-            jne switch_end
+            jne op5
  
  
  
             call oppDefrag
+            jmp switch_end
+        
+        op5:;# else if(op == 5)
+            cmp $5, op
+            jne switch_end
+
+            
+
+            call flush
+
+            
+            call opConcrete
+
             jmp switch_end
  
         switch_end:
